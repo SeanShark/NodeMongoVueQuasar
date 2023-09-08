@@ -30,7 +30,6 @@ module.exports = configure(function (/* ctx */) {
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli/boot-files
     boot: [
-      'vuelidate',
       'axios',
     ],
 
@@ -74,7 +73,7 @@ module.exports = configure(function (/* ctx */) {
       // ignorePublicFolder: true,
       // minify: false,
       // polyfillModulePreload: true,
-      distDir: '../server/public',
+      distDir: '../server/public/to10',
 
       // extendViteConf (viteConf) {},
       // viteVuePluginOptions: {},
