@@ -244,14 +244,13 @@ onMounted(async () => {
   if (token !== null) {
     try {
       await store.verifyUser()
-      .then((res) => {
-        if(res.status === 200) {
+      .then(() => {
+        if(store.user) {
           store.getTodolists();
         }
         else {
           router.push("/index");
         }
-        
       }).catch(() => {
         router.push("/index");
       })

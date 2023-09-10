@@ -382,6 +382,10 @@ const onCancel = (index) => {
 };
 
 const addLogger = async () => {
+  if (!selectedDate.value) {
+    store.failureTip('请选择日期');
+    return;
+  }
   if (loggerData.logger.length > 0) {
     loggerData.date = selectedDate.value;
     loggerData.user = store.user.email;
@@ -407,7 +411,7 @@ const addLogger = async () => {
         isLogged.value = true;
       })
       .catch((err) => {
-        store.failureTip(err.response.data);
+        store.failureTip(err.response.data.msg);
       })
       .finally(() => {
         loggerData.logger = "";
@@ -495,8 +499,8 @@ onMounted(async () => {
     try {
       await store
         .verifyUser()
-        .then((res) => {
-          if(res.status === 200) {
+        .then(() => {
+          if(store.user) {
             monthRange.value = store.user.loggerSetting.monthRange;
             themeColor.value = store.user.loggerSetting.themeColor;
             eventColor.value = store.user.loggerSetting.eventColor;
@@ -506,7 +510,7 @@ onMounted(async () => {
             router.push("/index");
           }
         })
-        .catch((err) => {
+        .catch(() => {
           router.push("/index");
         });
     } catch (err) {

@@ -52,11 +52,11 @@ router.post("/register", async (req, res, next) => {
     return;
   }
 
-  await User.findOne({ email: req.body.email }).then((user) => {
+  await User.findOne({ email: req.body.email }).then(async (user) => {
     if (user) {
       res.status(400).json({
         status: "error",
-        msg: "Email address has already being registered.",
+        msg: "邮件已经被注册",
       });
       return;
     }
@@ -68,7 +68,7 @@ router.post("/register", async (req, res, next) => {
       createdAt: new Date(),
     });
 
-    newUser
+    await newUser
       .save()
       .then(
         res.status(200).json({
@@ -141,10 +141,10 @@ router.post("/signup", async (req, res, next) => {
       });
     });
   })
-  .catch(() => {
+  .catch((err) => {
     res.status(401).json({
       status: "error",
-      msg: "错误，请重试",
+      msg: err.message,
     });
   });
 });
@@ -174,7 +174,7 @@ router.post("/verifysignup", async (req, res) => {
     //if doesn't exist
     res.status(401).json({
       status: "error",
-      msg: "错误，请检查后重试",
+      msg: err.message,
     });
   }
 });
@@ -200,10 +200,9 @@ router.post("/setpassword", async (req, res) => {
       }
     })
     .catch((err) => {
-      console.log(err);
       res.status(401).json({
         status: "error",
-        msg: "有错误发生，请重试.",
+        msg: err.message,
       });
     });
 });
@@ -236,7 +235,12 @@ router.post("/login", async (req, res, next) => {
         token: token,
       });
     })
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      res.status(401).json({
+        status: "error",
+        msg: err.message,
+      });
+    });
 });
 
 /*
@@ -275,7 +279,12 @@ router.get("/verifyuser", async (req, res, next) => {
           });
         }
       })
-      .catch((err) => console.log('verifyuser', err));
+      .catch((err) => {
+        res.status(401).json({
+          status: "error",
+          msg: err.message,
+        });
+      });
   });
 });
 
@@ -319,7 +328,7 @@ router.post("/forgot", async (req, res, next) => {
       // console.log(err);
       res.status(401).json({
         status: "error",
-        msg: "该邮箱账户不存在.",
+        msg: err.message,
       });
       // res.status(401).send("邮箱账户不存在.");
       return;
@@ -349,7 +358,7 @@ router.post("/verifyforgotcode", async (req, res) => {
     //if doesn't exist
     res.status(401).json({
       status: "error",
-      msg: "错误，请重试",
+      msg: err.message,
     });
   }
 });
@@ -392,7 +401,7 @@ router.post("/resetpassword", async (req, res) => {
     .catch((err) => {
       res.status(401).json({
         status: "error",
-        msg: "有错误发生，请重试.",
+        msg: err.message,
       });
     });
 });

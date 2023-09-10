@@ -128,13 +128,15 @@ const isPwd = ref(true);
 const isLoading = ref(false);
 
 onMounted(async () => {
-  let token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
   if (token !== null) {
-    await store.verifyUser();
-    if (store.user) {
-      router.push("/");
-    }
+    await store.verifyUser()
+    .then(() => {
+      if(store.user) {
+        router.push("/");
+      }
+    })
   }
 });
 

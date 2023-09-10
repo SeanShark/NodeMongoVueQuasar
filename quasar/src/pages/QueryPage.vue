@@ -330,8 +330,8 @@ onMounted(async () => {
     try {
       await store
         .verifyUser()
-        .then((res) => {
-          if(res.status !== 200) {
+        .then(() => {
+          if(!store.user) {
             router.push("/index");
           }
         })

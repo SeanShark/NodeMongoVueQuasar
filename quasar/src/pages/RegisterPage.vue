@@ -338,8 +338,18 @@ const captcha = reactive({
   state: true,
 });
 
-onMounted(() => {
+onMounted(async () => {
   getcapcha();
+  const token = localStorage.getItem("token");
+
+  if (token !== null) {
+    await store.verifyUser()
+    .then(() => {
+      if(store.user) {
+        router.push("/");
+      }
+    })
+  }
 });
 
 const getcapcha = () => {
