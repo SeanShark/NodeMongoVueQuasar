@@ -10,6 +10,7 @@ const routes = [
       { path: '/register', component: () => import('pages/RegisterPage.vue'), name: "注册页" },
       { path: '/query', component: () => import('pages/QueryPage.vue'), name: "查询页" },
       { path: '/logger', component: () => import('pages/LoggerPage.vue'), name: "日志页" },
+      { path: '/management', component: () => import('pages/ManagementPage.vue'), name: "管理页" },
       { path: '/setting', component: () => import('pages/SettingPage.vue'), name: "设置页" },
     ]
   },

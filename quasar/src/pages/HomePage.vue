@@ -1,6 +1,6 @@
 <template>
   <q-page class="bg-grey-3">
-    <p class="text-h6 text-center q-pa-md">备忘录</p>
+    <p class="text-h6 text-center q-pa-md">任务To-Do</p>
     <div class="column q-pa-sm q-ma-none">
       <q-input
         ref="inputRef"
@@ -18,8 +18,13 @@
         <template #prepend>
           <q-icon name="event" />
         </template>
+
         <template #append>
-          <q-btn round dense flat icon="send" @click.stop="createTodo" />
+          <q-btn round dense flat icon="send" @click.stop="createTodo" > 
+            <q-tooltip >
+            发送
+            </q-tooltip>
+          </q-btn>
         </template>
       </q-input>
       <div class="col q-pa-sm">
@@ -33,8 +38,11 @@
             keep-color
             :val="color.value"
             :color="color.color"
-            :label="color.label"
-          />
+          >
+            <q-tooltip :class="'bg-'+ color.color">
+             {{ color.label}}
+            </q-tooltip>
+          </q-radio>
         </div>
       </div>
     </div>

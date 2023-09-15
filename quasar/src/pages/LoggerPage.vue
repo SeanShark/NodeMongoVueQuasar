@@ -43,7 +43,7 @@
               dense
               flat
               icon="send"
-              color="primary"
+              :color="inputLight ? 'primary' : 'grey'"
               @click="addLogger"
             />
           </template>
@@ -81,7 +81,9 @@
                   color="primary"
                   :disable="isDisable"
                   @click="editLogger(list._id, list.logger, list.date, index)"
-                ></q-btn>
+                >
+
+                </q-btn>
                 <q-btn
                   v-if="visibleBtn"
                   label="取 消"
@@ -168,8 +170,13 @@
                     size="sm"
                     flat
                     padding="none"
-                    @click="readonlyEditor = false"
-                  />
+                    @click="readonlyEditor = !readonlyEditor"
+                  >
+                    <div v-if="!readonlyEditor">.....</div>
+                    <q-tooltip>
+                      点击开始编辑
+                    </q-tooltip>
+                  </q-btn>
                 </template>
               </q-editor>
             </form>

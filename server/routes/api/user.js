@@ -7,7 +7,7 @@ const key = process.env.jwtSecretKey;
 const router = express.Router();
 const transporter = require("../../Mail/email");
 const svgCaptcha = require('svg-captcha');
-const validateUser = require("../../components/ValidateEmail.js");
+const validate = require("../../components/ValidateEmail.js");
 
 
 router.get("/captcha", async ( req, res) => {
@@ -73,7 +73,7 @@ router.post("/register", async (req, res, next) => {
       .then(
         res.status(200).json({
           status: "success",
-          msg: "Now you are successfully register.",
+          msg: "用户注册成功",
         })
       )
       .catch((err) => console.log(err));
@@ -101,8 +101,8 @@ router.post("/signup", async (req, res, next) => {
   const email = req.body.email;
   const activationCode = Math.floor(100000 + Math.random() * 900000);
 
-  await User.findOne({ email: email })
-  .then(async (user) => {
+  try {
+    const user = await User.findOne({ email: email });
     if(!user) {
       const newUser = new User({
         email: email,
@@ -140,38 +140,34 @@ router.post("/signup", async (req, res, next) => {
         msg: "连接超时，请重试。",
       });
     });
-  })
-  .catch((err) => {
+  }
+  catch (err) {
     res.status(401).json({
       status: "error",
       msg: err.message,
     });
-  });
+  }
 });
 
 //Step two: Check email and register code, if ture, send 200 to client; if false, send 401
 router.post("/verifysignup", async (req, res) => {
   const { email, code } = req.body;
   try {
-    await User.findOne({
+    const user = await User.findOne({
       $and: [{ email: email }, { activationCode: code }],
-    }).then((user) => {
-      if (user) {
-        res.status(200).json({
-          status: "success",
-          msg: "验证通过，请设置密码.",
-        });
-        return
-      } else {
-        res.status(401).json({
-          status: "error",
-          msg: "邮箱或验证码错误，请检查后重试",
-        });
-        return
-      }
-    });
+    })
+    if (user) {
+      res.status(200).json({
+        status: "success",
+        msg: "验证通过，请设置密码.",
+      });
+    } else {
+      return res.status(401).json({
+        status: "error",
+        msg: "邮箱或验证码错误，请检查后重试",
+      });
+    }
   } catch (err) {
-    //if doesn't exist
     res.status(401).json({
       status: "error",
       msg: err.message,
@@ -182,65 +178,73 @@ router.post("/verifysignup", async (req, res) => {
 //Step three: Check email and register code, if ture ,save bcrypt password, set registerCode to null and send status 200
 router.post("/setpassword", async (req, res) => {
   const { email, code, password } = req.body;
-
-  await User.findOne({
-    $and: [{ email: email }, { activationCode: code }],
-  })
-    .then((user) => {
-      if (user) {
-        user.password = bcrypt.hashSync(password, 10);
-        user.activationCode = null;
-        user.createdAt = new Date().toLocaleString("zh-cn");;
-        user.save();
-
-        res.status(201).json({
-          status: "success",
-          msg: "密码设置成功，请前往登录页登录系统.",
-        });
-      }
+  try {
+    const user = await User.findOne({
+      $and: [{ email: email }, { activationCode: code }],
     })
-    .catch((err) => {
-      res.status(401).json({
+    if (!user) {
+      return res.status(401).json({
         status: "error",
-        msg: err.message,
+        msg: "信息验证错误，请重试",
       });
+    }
+    user.password = bcrypt.hashSync(password, 10);
+    user.activationCode = null;
+    user.createdAt = new Date().toLocaleString("zh-cn");;
+    user.save();
+
+    res.status(201).json({
+      status: "success",
+      msg: "密码设置成功，请前往登录页登录系统.",
     });
+  }
+  catch(err) {
+    res.status(401).json({
+      status: "error",
+      msg: err.message,
+    });
+  };
 });
 
 /* 
   Login
 */
 router.post("/login", async (req, res, next) => {
-  await User.findOne({ email: req.body.email })
-    .then((user) => {
-      if (!user) {
-        return res.status(401).json({
-          status: "nameError",
-          msg: "没有此用户.",
-        });
-      }
-
-      if (!bcrypt.compareSync(req.body.password, user.password)) {
-        return res.status(401).json({
-          status: "pwdError",
-          msg: "密码错误.",
-        });
-      }
-
-      const token = jwt.sign({ userID: user._id }, key);
-
-      res.status(200).json({
-        status: "success",
-        msg: "验证成功",
-        token: token,
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      return res.status(401).json({
+        status: "nameerror",
+        msg: "没有此用户.",
       });
-    })
-    .catch((err) => {
-      res.status(401).json({
-        status: "error",
-        msg: err.message,
+    } 
+    if (user.banned) {
+      return res.status(401).json({
+        status: "nameerror",
+        msg: "账户已禁用.",
       });
+    }
+  
+    if (!bcrypt.compareSync(req.body.password, user.password)) {
+      return res.status(401).json({
+        status: "pwderror",
+        msg: "密码错误.",
+      });
+    }
+  
+    const token = jwt.sign({ userID: user._id }, key);
+    res.status(200).json({
+      status: "success",
+      msg: "验证成功",
+      token: token,
     });
+  }
+  catch(err)  {
+    res.status(401).json({
+      status: "error",
+      msg: err.message,
+    });
+  };
 });
 
 /*
@@ -256,35 +260,34 @@ router.get("/verifyuser", async (req, res, next) => {
         title: "error",
         msg: "未授权用户",
       });
-    await User.findOne({ _id: decoded.userID })
-      .then((user) => {
-        if(user) {
-          user.lastLogin = new Date();
-          user.save();
-  
-          return res.status(200).json({
-            user: {
-              email: user.email,
-              name: user.name,
-              createdAt: user.createdAt,
-              lastLogin: user.lastLogin,
-              loggerSetting: user.loggerSetting,
-            },
-          });
-        }
-        else {
+      try {
+        const user = await User.findOne({ _id: decoded.userID })
+        if(!user) {
           return res.status(401).json({
             title: "error",
             msg: "未授权用户",
           });
         }
-      })
-      .catch((err) => {
+        user.lastLogin = new Date();
+        user.save();
+
+        return res.status(200).json({
+          user: {
+            email: user.email,
+            name: user.name,
+            createdAt: user.createdAt,
+            lastLogin: user.lastLogin,
+            loggerSetting: user.loggerSetting,
+            userPrivilege: user.userPrivilege,
+          },
+        });
+      }
+      catch(err) {
         res.status(401).json({
           status: "error",
           msg: err.message,
         });
-      });
+      };
   });
 });
 
@@ -295,65 +298,69 @@ router.get("/verifyuser", async (req, res, next) => {
 //Step One: Check email and send forgot code via email, save code in db
 router.post("/forgot", async (req, res, next) => {
   const userEmail = req.body.email;
-  await User.findOne({ email: userEmail })
-    .then(async (user) => {
-      const VerificationCode = Math.floor(100000 + Math.random() * 900000);
-      user.forgotCode = VerificationCode;
-      user.save();
-      // console.log(user);
-
-      await transporter
-        .sendMail({
-          from: "replytech@qq.com",
-          to: userEmail,
-          subject: "重置验证码",
-          text: "Hello world?",
-          //html: `<a href="http://10.168.3.3:5000/api/user/reset/${userEmail}/${VerificationCode}"><b>点击进入重置页面</b></a>`,
-          html: `此次重置密码的重置码为：${VerificationCode}`,
-        })
-        .then((info) => {
-          res.status(200).json({
-            status: "success",
-            msg: "验证码已发到您邮箱，请查收",
-          });
-        })
-        .catch((err) => {
-          res.status(401).json({
-            status: "error",
-            msg: "发送邮件失败，请重试.",
-          });
-        });
-    })
-    .catch((err) => {
-      // console.log(err);
-      res.status(401).json({
+  try {
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(401).json({
         status: "error",
-        msg: err.message,
+        msg: "用户不存在",
       });
-      // res.status(401).send("邮箱账户不存在.");
-      return;
+    }
+
+    const VerificationCode = Math.floor(100000 + Math.random() * 900000);
+    user.forgotCode = VerificationCode;
+    user.save();
+    // console.log(user);
+
+    await transporter
+      .sendMail({
+        from: "replytech@qq.com",
+        to: userEmail,
+        subject: "重置验证码",
+        text: "Hello world?",
+        //html: `<a href="http://10.168.3.3:5000/api/user/reset/${userEmail}/${VerificationCode}"><b>点击进入重置页面</b></a>`,
+        html: `此次重置密码的重置码为：${VerificationCode}`,
+      })
+      .then((info) => {
+        res.status(200).json({
+          status: "success",
+          msg: "验证码已发到您邮箱，请查收",
+        });
+      })
+      .catch((err) => {
+        res.status(401).json({
+          status: "error",
+          msg: "发送邮件失败，请重试.",
+        });
+      });
+  }
+  catch(err)  {
+    // console.log(err);
+    res.status(401).json({
+      status: "error",
+      msg: err.message,
     });
+  };
 });
 
 //Step two: Verfify email and forgotCode code, if ture, send 200 to client; if false, send 401
 router.post("/verifyforgotcode", async (req, res) => {
   const { code, email } = req.body;
   try {
-    await User.findOne({
+    const user = await User.findOne({
       $and: [{ email: email }, { forgotCode: code }],
-    }).then((user) => {
-      if (user) {
-        res.status(200).json({
-          status: "success",
-          msg: "验证成功，请重新设置您的密码.",
-        });
-      } else {
-        res.status(401).json({
-          status: "error",
-          msg: "验证码错误，请重试",
-        });
-      }
     });
+    if (user) {
+      res.status(200).json({
+        status: "success",
+        msg: "验证成功，请重新设置您的密码.",
+      });
+    } else {
+      res.status(401).json({
+        status: "error",
+        msg: "验证码错误，请重试",
+      });
+    }
   } catch (err) {
     //if doesn't exist
     res.status(401).json({
@@ -365,64 +372,58 @@ router.post("/verifyforgotcode", async (req, res) => {
 
 //Step three: Verify email and forgot code, if ture ,save bcrypt new password, delete forgot code and send status 200
 router.post("/resetpassword", async (req, res) => {
-
   const { email, code, password } = req.body;
-
-  await User.findOne({
-    $and: [{ email: email }, { forgotCode: code }],
-  })
-    .then((user) => {
-      if (user) {
-        // if (bcrypt.compareSync(password, user.password)) {
-        //   return res.status(401).json({
-        //     status: "error",
-        //     msg: "密码与前密码一致.",
-        //   });
-        // }
-
-        user.password = bcrypt.hashSync(password, 10);
-        user.forgotCode = "";
-        user.save()
-          .then(() => {
-            res.status(201).json({
-              status: "success",
-              msg: "密码重置成功，3秒后自动转到登录页.",
-            });
-          })
-          .catch(err => console.log(err))
-
-      } else {
-        res.status(401).json({
-          status: "error",
-          msg: "验证错误，请重试.",
-        });
-      }
-    })
-    .catch((err) => {
-      res.status(401).json({
-        status: "error",
-        msg: err.message,
-      });
+  try {
+    const user = await User.findOne({
+      $and: [{ email: email }, { forgotCode: code }],
     });
+    if (!user) {
+      return res.status(401).json({
+        status: "error",
+        msg: "验证错误，请重试.",
+      });
+    } 
+    // if (bcrypt.compareSync(password, user.password)) {
+    //   return res.status(401).json({
+    //     status: "error",
+    //     msg: "密码与前密码一致.",
+    //   });
+    // }
+    user.password = bcrypt.hashSync(password, 10);
+    user.forgotCode = "";
+    await user.save()
+      .then(() => {
+        res.status(201).json({
+          status: "success",
+          msg: "密码重置成功，3秒后自动转到登录页.",
+        });
+      })
+      .catch(err => console.log(err));
+  }
+  catch(err) {
+    res.status(401).json({
+      status: "error",
+      msg: err.message,
+    });
+  };
 });
 
 
 router.post("/loggersetting", async (req, res) => {
   const { user, monthRange, themeColor, eventColor} = req.body;
-  if (!validateUser(user)) {
+  if (!await validate.validateUser(user)) {
     return res.status(401).json({
-      status: "Error",
+      status: "error",
       msg: "未授权用户",
     });
   }
-
-  await User.findOne({ email: user })
-  .then((user) => {
-    user.loggerSetting.monthRange = monthRange;
-    user.loggerSetting.themeColor = themeColor;
-    user.loggerSetting.eventColor = eventColor;
-
-    user.save()
+  try {
+    const userEmail = await User.findOne({ email: user });
+    userEmail.loggerSetting.monthRange = monthRange;
+    userEmail.loggerSetting.themeColor = themeColor;
+    userEmail.loggerSetting.eventColor = eventColor;
+  
+    await userEmail.save()
     .then(() => {
       res.status(201).json({
         status: "success",
@@ -435,12 +436,89 @@ router.post("/loggersetting", async (req, res) => {
         msg: err.message,
       });
     })
-  })
-  .catch((err) => {
+  }
+  catch(err) {
     res.status(401).json({
       status: "error",
       msg: err.message,
     });
+  };
+});
+
+router.post("/alluser",async (req, res) => {
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "未授权用户",
+    });
+  }
+
+  const isSuperUser = await User.exists({
+    $and: [{ 'email': user }, { 'userPrivilege.superUser': 'true' }],
   });
+
+  if (!isSuperUser) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户",
+    });
+  }
+
+  try {
+    const users = await User.find({});
+    res.status(201).send(users);
+  }
+  catch(err) {
+    console.log(err.message);
+  }
+});
+
+router.post("/setuser",async (req, res) => {
+  const { id, field, value, user } = req.body;
+
+
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "未授权用户",
+    });
+  }
+
+  const isSuperUser = await User.exists({
+    $and: [{ 'email': user }, { 'userPrivilege.superUser': 'true' }],
+  });
+
+  if (!isSuperUser) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户",
+    });
+  }
+
+  if ( id === '65007b62e5a12afd583d0304' && field === 'userPrivilege.superUser') {
+    return res.status(401).json({
+      status: "error",
+      msg: "根管理员的管理权限不能更改",
+    });
+  }
+
+  try {
+    const user = await User.findOneAndUpdate({ _id: id }, { [field]: value });
+    if (user) {
+      res.status(201).json({
+        status: "success",
+        msg: "权限成功修改.",
+      });
+    } else {
+      res.status(404).json({
+        status: "error",
+        msg: "错误，请重试.",
+      });
+    }
+  }
+  catch(err) {
+    console.log(err.message);
+  }
 });
 module.exports = router;

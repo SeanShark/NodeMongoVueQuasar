@@ -8,22 +8,26 @@ const {
 } = require("../../Model/MogonDB");
 const DataBase = require("../../Model/MogonDB");
 const router = express.Router();
-const validateUser = require("../../components/ValidateEmail.js");
+const validate = require("../../components/ValidateEmail.js");
 
 router.get("/", async (req, res) => {
   const user = req.query.queryData.user;
-  if (!validateUser(user)) {
+  if (!await validate.validateUser(user)) {
     return res.status(401).json({
       status: "error",
       msg: "未授权用户",
     });
   }
+  const type = req.query.queryData.type;
+  const place = req.query.queryData.place;
+  const field = req.query.queryData.field;
+  const keyword = req.query.queryData.keyword.toUpperCase();
 
   if (
-    !req.query.queryData.type ||
-    !req.query.queryData.place ||
-    !req.query.queryData.field ||
-    !req.query.queryData.keyword
+    !type ||
+    !place ||
+    !field ||
+    !keyword
   ) {
     return res.status(401).json({
       status: "keywordError",
@@ -33,7 +37,6 @@ router.get("/", async (req, res) => {
 
   const forbiddenKeyword = ["1.2", "2.1", "1.1", "0.0"];
 
-  let keyword = req.query.queryData.keyword.toUpperCase();
   let isForbidden = false;
   for (const forbidden of forbiddenKeyword) {
     if (keyword === forbidden) {
@@ -42,27 +45,55 @@ router.get("/", async (req, res) => {
     }
   }
   if (isForbidden) {
-    res.status(401).json({
+    return res.status(401).json({
       status: "keywordError",
       msg: "关键字过于简单，请使用其他关键字",
     });
-    return;
   }
 
-  const type = req.query.queryData.type;
-  const place = req.query.queryData.place;
+
 
   let DB = new Object();
 
   if (type === "机房") {
+    if (!await validate.allowDatacenter(user)){
+      return res.status(401).json({
+        status: "typeError",
+        msg: "您没有权限查看该数据",
+      });
+    };
     DB = DataBase.DataCenter;
   } else if (type === "终端") {
+    if (!await validate.allowIP(user)){
+      return res.status(401).json({
+        status: "typeError",
+        msg: "您没有权限查看该数据",
+      });
+    };
     DB = DataBase.IP;
   } else if (type === "耗材") {
+    if (!await validate.allowPrinter(user)){
+      return res.status(401).json({
+        status: "typeError",
+        msg: "您没有权限查看该数据",
+      });
+    };
     DB = DataBase.Printer;
   } else if (type === "电话") {
+    if (!await validate.allowPhone(user)){
+      return res.status(401).json({
+        status: "typeError",
+        msg: "您没有权限查看该数据",
+      });
+    };
     DB = DataBase.Phone;
   } else if (type === "监控") {
+    if (!await validate.allowsurveillance(user)){
+      return res.status(401).json({
+        status: "typeError",
+        msg: "您没有权限查看该数据",
+      });
+    };
     DB = DataBase.Surveillance;
   } else {
     res.status(401).json({
@@ -74,6 +105,18 @@ router.get("/", async (req, res) => {
 
   if (keyword === "全部" || keyword === "所有" || keyword === "ALL") {
     await DB.find({ Place: place })
+      .sort({ updatedAt: "descending" })
+      .then((results) => {
+        res.status(201).send(results);
+      })
+      .catch((err) => console.log(err));
+  } else if (keyword === "null") {
+    await DB.find({
+      $and: [
+        { Place: place },
+        { [req.query.queryData.field]: "" },
+      ],
+    })
       .sort({ updatedAt: "descending" })
       .then((results) => {
         res.status(201).send(results);
@@ -96,7 +139,7 @@ router.get("/", async (req, res) => {
 
 router.get("/logger", async (req, res) => {
   const user = req.query.user;
-  if (!validateUser(user)) {
+  if (!await validate.validateUser(user)) {
     return res.status(401).json({
       status: "error",
       msg: "未授权用户",
@@ -130,7 +173,7 @@ router.get("/logger", async (req, res) => {
 
 router.post("/addlogger", async (req, res) => {
   const { user, logger, date } = req.body
-  if (!validateUser(user)) {
+  if (!await validate.validateUser(user)) {
     return res.status(401).json({
       status: "error",
       msg: "未授权用户",
@@ -195,7 +238,7 @@ router.post("/addlogger", async (req, res) => {
 
 router.post("/editlogger", async (req, res) => {
   const { user, _id, logger } = req.body;
-  if (!validateUser(user)) {
+  if (!await validate.validateUser(user)) {
     return res.status(401).json({
       status: "error",
       msg: "未授权用户",
@@ -224,20 +267,36 @@ router.post("/editlogger", async (req, res) => {
         });
       });
   } catch (error) {
-    // Handle errors
-    console.error(error);
     return res.status(500).json({
       status: "error",
-      msg: "Internal server error.",
+      msg: error.message,
     });
   }
 });
 
 router.post("/addip", async (req, res) => {
-  let MAC = req.body.MAC.toUpperCase();
-  let place = req.body.Place;
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.addPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
+  const MAC = req.body.data.MAC.toUpperCase();
+  const place = req.body.data.Place;
+  const ip = req.body.data.IP;
+
+
   let existsIP = await IP.exists({
-    $and: [{ Place: place }, { IP: req.body.IP }],
+    $and: [{ Place: place }, { IP: ip }],
   });
   let existsMAC = await IP.exists({
     $and: [{ Place: place }, { MAC: MAC }],
@@ -257,11 +316,11 @@ router.post("/addip", async (req, res) => {
     const date = new Date().toLocaleString("zh-cn");
     const newRecord = new IP({
       Place: place,
-      IP: req.body.IP,
+      IP: ip,
       MAC: MAC,
-      姓名: req.body.姓名,
-      办公室: req.body.办公室,
-      备注: req.body.备注,
+      姓名: req.body.data.姓名,
+      办公室: req.body.data.办公室,
+      备注: req.body.data.备注,
       updatedAt: date,
     });
 
@@ -286,8 +345,23 @@ router.post("/addip", async (req, res) => {
 });
 
 router.post("/adddatacenter", async (req, res) => {
-  let place = req.body.Place;
-  let ip = req.body.IP;
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.addPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
+  let place = req.body.data.Place;
+  let ip = req.body.data.IP;
   let existsIP = await DataCenter.exists({
     $and: [{ Place: place }, { IP: ip }],
   });
@@ -302,10 +376,10 @@ router.post("/adddatacenter", async (req, res) => {
     const newRecord = new DataCenter({
       Place: place,
       IP: ip,
-      名称: req.body.名称,
-      用户名: req.body.用户名,
-      密码: req.body.密码,
-      备注: req.body.备注,
+      名称: req.body.data.名称,
+      用户名: req.body.data.用户名,
+      密码: req.body.data.密码,
+      备注: req.body.data.备注,
       updatedAt: date,
     });
 
@@ -330,8 +404,23 @@ router.post("/adddatacenter", async (req, res) => {
 });
 
 router.post("/addsurveillance", async (req, res) => {
-  let place = req.body.Place;
-  let ip = req.body.IP;
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.addPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
+  let place = req.body.data.Place;
+  let ip = req.body.data.IP;
   let existsIP = await Surveillance.exists({
     $and: [{ Place: place }, { IP: ip }],
   });
@@ -345,11 +434,11 @@ router.post("/addsurveillance", async (req, res) => {
   const date = new Date().toLocaleString("zh-cn");
   const newRecord = new Surveillance({
     Place: place,
-    类型: req.body.类型,
+    类型: req.body.data.类型,
     IP: ip,
-    用户名: req.body.用户名,
-    密码: req.body.密码,
-    备注: req.body.备注,
+    用户名: req.body.data.用户名,
+    密码: req.body.data.密码,
+    备注: req.body.data.备注,
     updatedAt: date,
   });
 
@@ -373,11 +462,33 @@ router.post("/addsurveillance", async (req, res) => {
 });
 
 router.post("/addphone", async (req, res) => {
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.addPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
+  const place = req.body.data.Place;
+  const cable = req.body.data.楼层线路.toUpperCase();
+  const number = req.body.data.号码;
+  const panel = req.body.data.面板号;
+  const color = req.body.data.颜色对;
+  const office = req.body.data.办公室;
+
   if (
-    !req.body.Place ||
-    !req.body.号码 ||
-    !req.body.面板号 ||
-    !req.body.办公室
+    !place ||
+    !number ||
+    !req.body.data.面板号 ||
+    !req.body.data.办公室
   ) {
     res.status(401).json({
       status: "error",
@@ -385,9 +496,7 @@ router.post("/addphone", async (req, res) => {
     });
     return;
   }
-  const place = req.body.Place;
-  const cable = req.body.楼层线路.toUpperCase();
-  const number = req.body.号码;
+
 
   if (number < 10000000 || number > 100000000) {
     res.status(401).json({
@@ -401,11 +510,11 @@ router.post("/addphone", async (req, res) => {
   });
 
   let existsPanel = await Phone.exists({
-    $and: [{ Place: place }, { 面板号: req.body.面板号 }],
+    $and: [{ Place: place }, { 面板号: panel }],
   });
 
   let existsColor = await Phone.exists({
-    $and: [{ Place: place }, { 楼层线路: cable }, { 颜色对: req.body.颜色对 }],
+    $and: [{ Place: place }, { 楼层线路: cable }, { 颜色对: color }],
   });
 
   if (existsNumber) {
@@ -431,10 +540,10 @@ router.post("/addphone", async (req, res) => {
     const newRecord = new Phone({
       Place: place,
       号码: number,
-      面板号: req.body.面板号,
+      面板号: panel,
       楼层线路: cable,
-      颜色对: req.body.颜色对,
-      办公室: req.body.办公室,
+      颜色对: color,
+      办公室: office,
       updatedAt: date,
     });
 
@@ -458,25 +567,42 @@ router.post("/addphone", async (req, res) => {
 });
 
 router.post("/addprinter", async (req, res) => {
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.addPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
+  const brand = req.body.data.品牌;
+  const place = req.body.data.Place;
+  const printer = req.body.data.打印机;
+  const cartridge = req.body.data.硒鼓.toUpperCase();
+  const color = req.body.data.颜色;
+  const amount = req.body.data.数量 ? parseInt(req.body.data.数量) : 0;
+  const office = req.body.data.办公室;
+
   if (
-    !req.body.品牌 ||
-    !req.body.打印机 ||
-    !req.body.硒鼓 ||
-    !req.body.颜色 ||
-    !req.body.办公室
+    !brand ||
+    !printer ||
+    !cartridge ||
+    !color ||
+    !office
   ) {
     return res.status(401).json({
       status: "error",
       msg: "缺乏关键信息",
     });
   }
-  const brand = req.body.品牌;
-  const place = req.body.Place;
-  const printer = req.body.打印机;
-  const cartridge = req.body.硒鼓.toUpperCase();
-  const color = req.body.颜色;
-  const amount = req.body.数量 ? parseInt(req.body.数量) : 0;
-  const office = req.body.办公室;
+
   const date = new Date().toLocaleString("zh-cn");
 
   let existsColor = await Printer.exists({
@@ -524,8 +650,21 @@ router.post("/addprinter", async (req, res) => {
 });
 
 router.delete("/delete", async (req, res) => {
-  const type = req.query.type;
-  const id = req.query.id;
+  const { type, id, user } = req.query;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.deletePrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
   let DB = new Object();
 
   if (type === "机房") {
@@ -566,7 +705,7 @@ router.delete("/delete", async (req, res) => {
 
 router.delete("/deletelogger", async (req, res) => {
   const user = req.query.user;
-  if (!validateUser(user)) {
+  if (!await validate.validateUser(user)) {
     return res.status(401).json({
       status: "error",
       msg: "未授权用户",
@@ -593,10 +732,26 @@ router.delete("/deletelogger", async (req, res) => {
 });
 
 router.put("/editip", async (req, res) => {
-  const ip = req.body.IP;
-  const mac = req.body.MAC.toUpperCase();
-  const place = req.body.Place;
-  const id = req.body._id;
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  };
+  
+  if (!await validate.editPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  };
+
+
+  const ip = req.body.data.IP;
+  const mac = req.body.data.MAC.toUpperCase();
+  const place = req.body.data.Place;
+  const id = req.body.data._id;
 
   let existsIP = await IP.exists({
     $and: [{ IP: ip }, { Place: place }, { _id: { $ne: id } }],
@@ -621,9 +776,9 @@ router.put("/editip", async (req, res) => {
     const updateUser = {
       IP: ip,
       MAC: mac,
-      姓名: req.body.姓名,
-      办公室: req.body.办公室,
-      备注: req.body.备注,
+      姓名: req.body.data.姓名,
+      办公室: req.body.data.办公室,
+      备注: req.body.data.备注,
       updatedAt: date,
     };
     IP.findOneAndUpdate({ _id: id }, updateUser)
@@ -651,11 +806,34 @@ router.put("/editip", async (req, res) => {
 });
 
 router.put("/editphone", async (req, res) => {
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.editPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+
+  const place = req.body.data.Place;
+  const cable = req.body.data.楼层线路.toUpperCase();
+  const number = req.body.data.号码;
+  const color = req.body.data.颜色对;
+  const id = req.body.data._id;
+  const panel = req.body.data.面板号;
+  const office = req.body.data.办公室;
+
   if (
-    !req.body.Place ||
-    !req.body.号码 ||
-    !req.body.面板号 ||
-    !req.body.办公室
+    !place ||
+    !number ||
+    !panel ||
+    !office
   ) {
     res.status(401).json({
       status: "error",
@@ -663,11 +841,7 @@ router.put("/editphone", async (req, res) => {
     });
     return;
   }
-  const place = req.body.Place;
-  const cable = req.body.楼层线路.toUpperCase();
-  const number = req.body.号码;
-  const color = req.body.颜色对;
-  const id = req.body._id;
+
 
   if (number < 10000000 || number > 100000000) {
     res.status(401).json({
@@ -716,14 +890,14 @@ router.put("/editphone", async (req, res) => {
   } else {
     const date = new Date().toLocaleString("zh-cn");
     const updatePhone = {
-      号码: req.body.号码,
-      面板号: req.body.面板号,
-      楼层线路: req.body.楼层线路,
-      颜色对: req.body.颜色对,
-      办公室: req.body.办公室,
+      号码: req.body.data.号码,
+      面板号: req.body.data.面板号,
+      楼层线路: req.body.data.楼层线路,
+      颜色对: req.body.data.颜色对,
+      办公室: req.body.data.办公室,
       updatedAt: date,
     };
-    Phone.findOneAndUpdate({ _id: req.body._id }, updatePhone)
+    Phone.findOneAndUpdate({ _id: req.body.data._id }, updatePhone)
       .then((e) => {
         if (e) {
           res.status(201).json({
@@ -748,27 +922,43 @@ router.put("/editphone", async (req, res) => {
 });
 
 router.put("/editprinter", async (req, res) => {
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.editPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+  
+  const id = req.body.data._id;
+  const place = req.body.data.Place;
+  const brand = req.body.data.品牌;
+  const printer = req.body.data.打印机;
+  const cartridge = req.body.data.硒鼓.toUpperCase();
+  const color = req.body.data.颜色;
+  const amount = req.body.data.数量 ? parseInt(req.body.data.数量) : 0;
+  // console.log(typeof amount); //number
+  const office = req.body.data.办公室;
   if (
-    !req.body.品牌 ||
-    !req.body.打印机 ||
-    !req.body.硒鼓 ||
-    !req.body.颜色 ||
-    !req.body.办公室
+    !brand ||
+    !printer ||
+    !cartridge ||
+    !color ||
+    !office
   ) {
     return res.status(401).json({
       status: "error",
       msg: "缺乏关键信息",
     });
   }
-  const id = req.body._id;
-  const place = req.body.Place;
-  const brand = req.body.品牌;
-  const printer = req.body.打印机;
-  const cartridge = req.body.硒鼓.toUpperCase();
-  const color = req.body.颜色;
-  const amount = req.body.数量 ? parseInt(req.body.数量) : 0;
-  // console.log(typeof amount); //number
-  const office = req.body.办公室;
+
   const date = new Date().toLocaleString("zh-cn");
   let existsColor = await Printer.exists({
     $and: [
@@ -795,7 +985,7 @@ router.put("/editprinter", async (req, res) => {
     办公室: office,
     updatedAt: date,
   };
-  Printer.findOneAndUpdate({ _id: req.body._id }, updatePrinter)
+  Printer.findOneAndUpdate({ _id: req.body.data._id }, updatePrinter)
     .then((e) => {
       if (e) {
         res.status(201).json({
@@ -819,60 +1009,91 @@ router.put("/editprinter", async (req, res) => {
 });
 
 router.put("/editdatacenter", async (req, res) => {
-  let ip = req.body.IP;
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.editPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+  
+  let ip = req.body.data.IP;
   let existsIP = await DataCenter.exists({
     $and: [
-      { Place: req.body.Place },
+      { Place: req.body.data.Place },
       { IP: ip },
-      { _id: { $ne: req.body._id } },
+      { _id: { $ne: req.body.data._id } },
     ],
   });
   if (existsIP) {
-    res.status(401).json({
+    return res.status(401).json({
       status: "ipError",
       msg: "与现有IP地址冲突",
     });
-  } else {
-    const date = new Date().toLocaleString("zh-cn");
-    const updateDataCenter = {
-      名称: req.body.名称,
-      IP: req.body.IP,
-      用户名: req.body.用户名,
-      密码: req.body.密码,
-      备注: req.body.备注,
-      updatedAt: date,
-    };
-    DataCenter.findOneAndUpdate({ _id: req.body._id }, updateDataCenter)
-      .then((e) => {
-        if (e) {
-          res.status(201).json({
-            status: "success",
-            msg: "记录已更新",
-            updatedAt: date,
-          });
-        } else {
-          return res.status(401).json({
-            status: "error",
-            msg: "没有该记录",
-          });
-        }
-      })
-      .catch((err) => {
+  } 
+
+  const date = new Date().toLocaleString("zh-cn");
+  const updateDataCenter = {
+    名称: req.body.data.名称,
+    IP: ip,
+    用户名: req.body.data.用户名,
+    密码: req.body.data.密码,
+    备注: req.body.data.备注,
+    updatedAt: date,
+  };
+  DataCenter.findOneAndUpdate({ _id: req.body.data._id }, updateDataCenter)
+    .then((e) => {
+      if (e) {
+        res.status(201).json({
+          status: "success",
+          msg: "记录已更新",
+          updatedAt: date,
+        });
+      } else {
         return res.status(401).json({
           status: "error",
-          msg: err.message,
+          msg: "没有该记录",
         });
+      }
+    })
+    .catch((err) => {
+      return res.status(401).json({
+        status: "error",
+        msg: err.message,
       });
-  }
+    });
+  
 });
 
 router.put("/editsurveillance", async (req, res) => {
-  let ip = req.body.IP;
+  const user = req.body.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "非法用户.",
+    });
+  }
+  
+  if (!await validate.editPrivilege(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "您没有该权限.",
+    });
+  }
+  
+  let ip = req.body.data.IP;
   let existsIP = await Surveillance.exists({
     $and: [
-      { Place: req.body.Place },
+      { Place: req.body.data.Place },
       { IP: ip },
-      { _id: { $ne: req.body._id } },
+      { _id: { $ne: req.body.data._id } },
     ],
   });
   if (existsIP) {
@@ -883,14 +1104,14 @@ router.put("/editsurveillance", async (req, res) => {
   } else {
     const date = new Date().toLocaleString("zh-cn");
     const updateDataCenter = {
-      类型: req.body.类型,
+      类型: req.body.data.类型,
       IP: ip,
-      用户名: req.body.用户名,
-      密码: req.body.密码,
-      备注: req.body.备注,
+      用户名: req.body.data.用户名,
+      密码: req.body.data.密码,
+      备注: req.body.data.备注,
       updatedAt: date,
     };
-    Surveillance.findOneAndUpdate({ _id: req.body._id }, updateDataCenter)
+    Surveillance.findOneAndUpdate({ _id: req.body.data._id }, updateDataCenter)
       .then((e) => {
         if (e) {
           res.status(201).json({
@@ -901,7 +1122,7 @@ router.put("/editsurveillance", async (req, res) => {
         } else {
           return res.status(401).json({
             status: "error",
-            msg: "没有该记录",
+            msg: e.message,
           });
         }
       })

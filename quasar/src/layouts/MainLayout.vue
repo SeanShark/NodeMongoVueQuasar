@@ -1,96 +1,101 @@
 <template>
-  <div >
-    
-      <q-layout view="hHh Lpr lFf">
-        <q-header v-if="store.user">
-          <q-toolbar>
-            <q-btn
-              flat
-              dense
-              round
-              icon="menu"
-              aria-label="Menu"
-              @click="toggleLeftDrawer"
-            />
+  <q-layout view="hHh Lpr lFf">
+    <q-header v-if="store.user">
+      <q-toolbar>
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
+          @click="toggleLeftDrawer"
+        />
 
-            <q-toolbar-title>
-              <span class="gt-sm"> {{ route.name }}</span>
-              <q-icon
-                class="q-pa-md lt-md icon-position"
-                name="fas fa-dove"
-                size="sm"
-                color="white"
-              />
-            </q-toolbar-title>
-
-            <q-btn round flat icon="logout" @click="confirmLogout" />
-          </q-toolbar>
-        </q-header>
-
-        <q-header v-else>
-          <q-toolbar>
-            <q-btn flat round dense icon="home" class="q-mr-sm" to="/index" />
-
-            <q-toolbar-title class="text-center">{{
-              route.name
-            }}</q-toolbar-title>
-          </q-toolbar>
-        </q-header>
-
-        <q-drawer
-          v-if="store.user"
-          v-model="leftDrawerOpen"
-          :width="store.isMobile? 250 : 320"
-          show-if-above
-          bordered
-          class="shadow-3"
-        >
+        <q-toolbar-title>
+          <span class="gt-sm"> {{ route.name }}</span>
           <q-icon
-            class="q-pa-md"
-            name="fa-sharp fa-solid fa-dove"
-            size="md"
-            color="primary"
+            class="q-pa-md lt-md icon-position"
+            name="fas fa-dove"
+            size="sm"
+            color="white"
           />
-          <q-list>
-            <q-item v-ripple to="/" clickable exact>
-              <q-item-section avatar>
-                <q-icon name="home" size="sm" color="primary" />
-              </q-item-section>
+        </q-toolbar-title>
 
-              <q-item-section class="text-weight-bold">首页</q-item-section>
-            </q-item>
+        <q-btn round flat icon="logout" @click="confirmLogout" />
+      </q-toolbar>
+    </q-header>
 
-            <q-item v-ripple clickable to="/query" exact>
-              <q-item-section avatar>
-                <q-icon name="fa-solid fa-search" size="xs" color="primary" />
-              </q-item-section>
+    <q-header v-else>
+      <q-toolbar>
+        <q-btn flat round dense icon="home" class="q-mr-sm" to="/index" />
 
-              <q-item-section class="text-weight-bold">查询</q-item-section>
-            </q-item>
-            <q-item v-ripple clickable to="/logger" exact>
-              <q-item-section avatar>
-                <q-icon name="edit_note" size="xs" color="primary" />
-              </q-item-section>
+        <q-toolbar-title class="text-center">{{
+          route.name
+        }}</q-toolbar-title>
+      </q-toolbar>
+    </q-header>
 
-              <q-item-section class="text-weight-bold">日志</q-item-section>
-            </q-item>
+    <q-drawer
+      v-if="store.user"
+      v-model="leftDrawerOpen"
+      :width="store.isMobile? 250 : 320"
+      show-if-above
+      bordered
+      class="shadow-3"
+    >
+      <q-icon
+        class="q-pa-md"
+        name="fa-sharp fa-solid fa-dove"
+        size="md"
+        color="primary"
+      />
+      <q-list>
+        <q-item v-ripple to="/" clickable exact>
+          <q-item-section avatar>
+            <q-icon name="home" size="sm" color="primary" />
+          </q-item-section>
 
-            <q-item v-ripple to="/setting" clickable exact>
-              <q-item-section avatar>
-                <q-icon name="fa-solid fa-gear" size="xs" color="primary" />
-              </q-item-section>
+          <q-item-section class="text-weight-bold">首页</q-item-section>
+        </q-item>
 
-              <q-item-section class="text-weight-bold">设置</q-item-section>
-            </q-item>
-          </q-list>
-        </q-drawer>
+        <q-item v-if="store.user.userPrivilege.read" v-ripple clickable to="/query" exact>
+          <q-item-section avatar>
+            <q-icon name="fa-solid fa-search" size="xs" color="primary" />
+          </q-item-section>
 
-        <q-page-container style="overflow-y: auto">
-          <router-view />
-        </q-page-container>
-      </q-layout>
-    
-  </div>
+          <q-item-section class="text-weight-bold">查询</q-item-section>
+        </q-item>
+        <q-item v-ripple clickable to="/logger" exact>
+          <q-item-section avatar>
+            <q-icon name="edit_note" size="xs" color="primary" />
+          </q-item-section>
+
+          <q-item-section class="text-weight-bold">日志</q-item-section>
+        </q-item>
+
+        <q-item v-ripple to="/setting" clickable exact>
+          <q-item-section avatar>
+            <q-icon name="fa-solid fa-gear" size="xs" color="primary" />
+          </q-item-section>
+
+          <q-item-section class="text-weight-bold">设置</q-item-section>
+        </q-item>
+
+        <q-item v-if="store.user.userPrivilege.superUser" v-ripple clickable to="/management" exact>
+          <q-item-section avatar>
+            <q-icon name="manage_accounts" size="xs" color="primary" />
+          </q-item-section>
+
+          <q-item-section class="text-weight-bold">管理页</q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
+
+    <q-page-container style="overflow-y: auto">
+      <router-view />
+    </q-page-container>
+  </q-layout>
+
 </template>
 
 <script setup>

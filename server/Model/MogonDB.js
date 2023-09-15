@@ -32,23 +32,22 @@ mongoose
     },
   });
 
-
-const postsSchema = new mongoose.Schema({
-    post: {
-      type: String,
-      required: true,
-    },
-    createdAt: {
-      type: String,
-      //default: new Date().toLocaleString("zh-cn")
-      required: true,
-      // timezone: 'Asia/Shanghai' // set timezone to EST
-    }
-});
-
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
+  },
+  phone: {
+    type: String,
+  },
+  gender: {
+    type: String,
+  },
+  birth: {
+    type: String,
+  },
+  banned: {
+    type: Boolean,
+    default: false
   },
   email: {
     type: String,
@@ -67,11 +66,55 @@ const UserSchema = new mongoose.Schema({
     default: null,
   },
   createdAt: {
-    type: String
+    type: Date,
     //default: Date().toLocaleString("zh-cn")
   },
   lastLogin: {
-    type: String
+    type: Date,
+  },
+  userPrivilege: {
+    superUser: {
+      type: Boolean,
+      default: false
+    },
+    read: {
+      type: Boolean,
+      default: false
+    },
+    add: {
+      type: Boolean,
+      default: false
+    },
+    edit: {
+      type: Boolean,
+      default: false
+    },
+    delete: {
+      type: Boolean,
+      default: false
+    },
+  },
+  databasePermissions: {
+    ip: {
+      type: Boolean,
+      default: true
+    },
+    phone: {
+      type: Boolean,
+      default: false
+    },
+    printer: {
+      type: Boolean,
+      default: false
+    },
+    datacenter: {
+      type: Boolean,
+      default: false
+    },
+    surveillance: {
+      type: Boolean,
+      default: false
+    },
   },
   loggerSetting: {
     monthRange: {
@@ -261,8 +304,6 @@ const LoggerSchema = new mongoose.Schema({
   }
 });
 
-
-const Posts = mongoose.models.posts || mongoose.model("posts", postsSchema);
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
 const IP = mongoose.models.ipmacs || mongoose.model("Ipmac", IPSchema);
 const Todo = mongoose.models.todo || mongoose.model("Todo", todoSchema);
@@ -273,7 +314,6 @@ const Surveillance = mongoose.models.surveillance || mongoose.model("Surveillanc
 const Logger = mongoose.models.logger || mongoose.model("Logger", LoggerSchema);
 
 module.exports = {
-  Posts,
   User,
   IP,
   Todo,
