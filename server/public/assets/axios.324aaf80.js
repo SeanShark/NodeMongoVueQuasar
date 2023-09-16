@@ -1,0 +1,1 @@
+import{b as t}from"./index.f8654bd3.js";import{a}from"./axios.7331a07d.js";a.defaults.baseURL="http://192.168.8.10:8080/api";a.defaults.timeout=1e4;const e=a.create({baseURL:"https://api.example.com"});var r=t(({app:o})=>{o.config.globalProperties.$axios=a,o.config.globalProperties.$api=e});export{e as api,r as default};
