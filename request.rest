@@ -1,5 +1,15 @@
 GET http://localhost:5000/api/posts
 
+
+###
+GET  http://localhost:8080/api/user/test
+Content-Type: application/json
+
+{
+    "user": "47262243@qq.com",
+    "post": "1234512312365"
+}
+
 ###
 POST http://localhost:5000/api/posts
 Content-Type: application/json

@@ -254,6 +254,7 @@ onMounted(async () => {
       await store.verifyUser()
       .then(() => {
         if(store.user) {
+          console.log(store.user);
           store.getTodolists();
         }
         else {

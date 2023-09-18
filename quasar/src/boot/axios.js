@@ -1,6 +1,7 @@
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
-axios.defaults.baseURL = 'http://10.168.3.10:8080/api';
+// axios.defaults.baseURL = 'http://10.168.3.3:8080/api';
+axios.defaults.baseURL = 'http://60890559e8ec.sn.mynetname.net:8080/api';
 axios.defaults.timeout = 10000;
 // Be careful when using SSR for cross-request state pollution
 // due to creating a Singleton instance here;
@@ -8,7 +9,7 @@ axios.defaults.timeout = 10000;
 // good idea to move this instance creation inside of the
 // "export default () => {}" function below (which runs individually
 // for each client)
-const api = axios.create({ baseURL: 'https://api.example.com' })
+const api = axios.create({ baseURL: 'https://60890559e8ec.sn.mynetname.net:8080' })
 
 export default boot(({ app }) => {
   // for use inside Vue files (Options API) through this.$axios and this.$api

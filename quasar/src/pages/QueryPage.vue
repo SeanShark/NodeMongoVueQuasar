@@ -550,11 +550,14 @@ const handleSearch = async () => {
       keyword: keyword,
       user: store.user.email,
     };
-    await store.axios
-      .get("/query", {params: { queryData }})
+
+    
+    await store.axios.get("/query", {params: { queryData }})
       .then((res) => {
-        showTable.value = true;
-        tableRows.value = res.data;
+        if (res.status === 201) {
+          showTable.value = true;
+          tableRows.value = res.data;
+        }
       })
       .catch((err) => {
         if (err.response.data.status === "keywordError") {
@@ -574,7 +577,7 @@ const handleSearch = async () => {
       .finally(async () => {
         scrollAreaHeight.value = await tableRef.value?.$el.clientHeight + 10;
         searchLoading.value = false;
-      });
+      })
   }
 };
 

@@ -1,16 +1,6 @@
 const DataBase = require("../Model/MogonDB");
 
 const validateUser = async (user) => {
-  if (!user || user.length > 320) {
-    console.log('length false',user);
-    return false;
-  }
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailPattern.test(user)) {
-    console.log('emailPattern false');
-    return false;
-  }
   const isAuthUser = await DataBase.User.exists({
     $and: [
       { email: user },

@@ -8,7 +8,22 @@ const router = express.Router();
 const transporter = require("../../Mail/email");
 const svgCaptcha = require('svg-captcha');
 const validate = require("../../components/ValidateEmail.js");
+const { query, validationResult, check, body } = require('express-validator');
 
+router.get("/test", [
+  body("user").notEmpty().withMessage("用户名不能为空"),
+  body("user").isEmail().withMessage("非法邮箱账号"),
+  body("post").isLength({ min: 10 }).withMessage("post too short.")
+  
+], async (req, res) => {
+  const result = validationResult(req);
+  console.log(result);
+  if (result.isEmpty()) {
+    // return res.send(`Hello, ${req.query.person}!`);
+    return res.send(`Hello, ${req.body.user}!`);
+  }
+  res.status(401).send({ errors: result.array()[0].msg });
+})
 
 router.get("/captcha", async ( req, res) => {
   var captcha = svgCaptcha.create({
@@ -214,13 +229,13 @@ router.post("/login", async (req, res, next) => {
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
       return res.status(401).json({
-        status: "nameerror",
+        status: "nameError",
         msg: "没有此用户.",
       });
     } 
     if (user.banned) {
       return res.status(401).json({
-        status: "nameerror",
+        status: "nameError",
         msg: "账户已禁用.",
       });
     }

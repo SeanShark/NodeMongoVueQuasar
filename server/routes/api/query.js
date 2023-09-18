@@ -9,31 +9,37 @@ const {
 const DataBase = require("../../Model/MogonDB");
 const router = express.Router();
 const validate = require("../../components/ValidateEmail.js");
+const { query, validationResult, check, body } = require('express-validator');
 
-router.get("/", async (req, res) => {
-  const user = req.query.queryData.user;
+router.get("/", [
+  body("*.user").isEmail().withMessage("用户信息错误"),
+  body("*.type").notEmpty().withMessage("类型不能为空")
+  .isLength({ max: 10 }).withMessage("非法类型"),
+  body("*.place").notEmpty().withMessage("地点不能为空")
+  .isLength({ max: 10 }).withMessage("非法地点"),
+  body("*.field").notEmpty().withMessage("字段不能为空")
+  .isLength({ max: 10 }).withMessage("非法字段"),
+  body("*.keyword").notEmpty().withMessage("关键字不能为空")
+  .isLength({ max: 50 }).withMessage("关键字太多"),
+], async (req, res) => {
+  const result = validationResult(req);
+  if (!result.isEmpty()) {
+    return res.status(401).json({ 
+      status: "error",
+      msg: result.array()[0].msg,
+    });
+  }
+
+  const { user, type, place, field } = req.query.queryData;
+
   if (!await validate.validateUser(user)) {
     return res.status(401).json({
       status: "error",
       msg: "未授权用户",
     });
   }
-  const type = req.query.queryData.type;
-  const place = req.query.queryData.place;
-  const field = req.query.queryData.field;
-  const keyword = req.query.queryData.keyword.toUpperCase();
 
-  if (
-    !type ||
-    !place ||
-    !field ||
-    !keyword
-  ) {
-    return res.status(401).json({
-      status: "keywordError",
-      msg: "查询参数错误",
-    });
-  }
+  const keyword = req.query.queryData.keyword.toUpperCase();
 
   const forbiddenKeyword = ["1.2", "2.1", "1.1", "0.0"];
 
@@ -50,8 +56,6 @@ router.get("/", async (req, res) => {
       msg: "关键字过于简单，请使用其他关键字",
     });
   }
-
-
 
   let DB = new Object();
 
@@ -114,7 +118,7 @@ router.get("/", async (req, res) => {
     await DB.find({
       $and: [
         { Place: place },
-        { [req.query.queryData.field]: "" },
+        { [field]: "" },
       ],
     })
       .sort({ updatedAt: "descending" })
@@ -126,7 +130,7 @@ router.get("/", async (req, res) => {
     await DB.find({
       $and: [
         { Place: place },
-        { [req.query.queryData.field]: { $regex: new RegExp(keyword, "i") } },
+        { [field]: { $regex: new RegExp(keyword, "i") } },
       ],
     })
       .sort({ updatedAt: "descending" })
@@ -137,7 +141,15 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/logger", async (req, res) => {
+router.get("/logger", query("user").isEmail().withMessage("用户信息错误"), async (req, res) => {
+  const result = validationResult(req);
+  if (!result.isEmpty()) {
+    return res.status(401).json({ 
+      status: "error",
+      msg: result.array()[0].msg,
+    });
+  }
+
   const user = req.query.user;
   if (!await validate.validateUser(user)) {
     return res.status(401).json({
