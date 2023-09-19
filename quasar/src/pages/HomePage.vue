@@ -13,6 +13,7 @@
         outlined
         placeholder="请输入您的内容"
         lazy-rules="ondemand"
+        autocomplete="off"
         @keyup.enter="createTodo"
       >
         <template #prepend>
@@ -232,6 +233,8 @@
         </q-tab-panels>
       </q-card>
     </div>
+
+
   </q-page>
 </template>
 
@@ -254,7 +257,6 @@ onMounted(async () => {
       await store.verifyUser()
       .then(() => {
         if(store.user) {
-          console.log(store.user);
           store.getTodolists();
         }
         else {

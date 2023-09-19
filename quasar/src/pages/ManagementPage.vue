@@ -157,6 +157,15 @@
                 @click="updateUser(user._id, 'userPrivilege.add', user.userPrivilege.add)"
               />
               <q-toggle
+                v-model="user.userPrivilege.edit"
+                name="user.userPrivilege.edit"
+                color="green"
+                label="编辑"
+                left-label
+                :disable="clickable"
+                @click="updateUser(user._id, 'userPrivilege.edit', user.userPrivilege.edit)"
+              />
+              <q-toggle
                 v-model="user.userPrivilege.delete"
                 name="user.userPrivilege.delete"
                 color="green"
@@ -246,11 +255,14 @@ const store = useUserStore();
 const router = useRouter();
 
 const originalUsers = ref([]);
-// const filteredUser = ref([]);
 const filter = ref("")
+const isDisabled = ref(false)
 
-const clickable = ref(false)
+const clickable = ref(false);
 const updateUser = async (id, field, value) => {
+  if (isDisabled.value) {
+    return;
+  }
   if (!id || !field || typeof(value) !== 'boolean') {
     store.failureTip('参数有误')
     return;

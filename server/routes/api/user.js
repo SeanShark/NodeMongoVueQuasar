@@ -14,7 +14,6 @@ router.get("/test", [
   body("user").notEmpty().withMessage("用户名不能为空"),
   body("user").isEmail().withMessage("非法邮箱账号"),
   body("post").isLength({ min: 10 }).withMessage("post too short.")
-  
 ], async (req, res) => {
   const result = validationResult(req);
   console.log(result);
@@ -242,7 +241,7 @@ router.post("/login", async (req, res, next) => {
   
     if (!bcrypt.compareSync(req.body.password, user.password)) {
       return res.status(401).json({
-        status: "pwderror",
+        status: "pwdError",
         msg: "密码错误.",
       });
     }
@@ -290,6 +289,9 @@ router.get("/verifyuser", async (req, res, next) => {
           user: {
             email: user.email,
             name: user.name,
+            phone: user.phone,
+            gender: user.gender,
+            birth: user.birth,
             createdAt: user.createdAt,
             lastLogin: user.lastLogin,
             loggerSetting: user.loggerSetting,
@@ -304,6 +306,65 @@ router.get("/verifyuser", async (req, res, next) => {
         });
       };
   });
+});
+
+/*
+  Change password
+*/
+router.post("/changepwd", [
+    body("user").isEmail().withMessage("邮箱账号有误"),
+    body("newPwd").notEmpty().withMessage("邮箱账号有误")
+      .isLength({ min: 8, max: 30 }).withMessage("密码长度不符合要求")
+  ], async (req, res, next) => {
+    const result = validationResult(req);
+    if (!result.isEmpty()) {
+      return res.status(401).json({
+        status: "error",
+        msg: result.array()[0].msg,
+      });
+    }
+    
+    try {
+      
+      const user = await User.findOne({ email: req.body.user });
+      if (!user) {
+        return res.status(401).json({
+          status: "error",
+          msg: "没有此用户.",
+        });
+      } 
+      if (user.banned) {
+        return res.status(401).json({
+          status: "error",
+          msg: "账户已禁用.",
+        });
+      }
+    
+      if (!bcrypt.compareSync(req.body.originPwd, user.password)) {
+        return res.status(401).json({
+          status: "pwdError",
+          msg: "密码错误.",
+        });
+      }
+
+      user.password = bcrypt.hashSync(req.body.newPwd, 10);
+      await user.save()
+      .then(() => {
+        res.status(200).json({
+          status: "success",
+          msg: "密码更改成功"
+        });
+      })
+      .catch(err => console.log(err));
+
+
+    }
+    catch(err)  {
+      res.status(401).json({
+        status: "error",
+        msg: err.message,
+      });
+    };
 });
 
 /*
@@ -423,7 +484,9 @@ router.post("/resetpassword", async (req, res) => {
   };
 });
 
-
+/*
+  Logger Settings
+*/
 router.post("/loggersetting", async (req, res) => {
   const { user, monthRange, themeColor, eventColor} = req.body;
   if (!await validate.validateUser(user)) {
@@ -459,7 +522,9 @@ router.post("/loggersetting", async (req, res) => {
     });
   };
 });
-
+/*
+  SuperUser Fetch All Users
+*/
 router.post("/alluser",async (req, res) => {
   const user = req.body.user;
   if (!await validate.validateUser(user)) {
@@ -489,6 +554,10 @@ router.post("/alluser",async (req, res) => {
   }
 });
 
+
+/*
+  User Privilege Settings
+*/
 router.post("/setuser",async (req, res) => {
   const { id, field, value, user } = req.body;
 
@@ -536,4 +605,31 @@ router.post("/setuser",async (req, res) => {
     console.log(err.message);
   }
 });
+
+/*
+  Personal Information Settings
+*/
+router.post("/personal", async (req, res) => {
+  const user = await User.findOne({ email: req.body.user });
+  if (!user) {
+    return res.status(401).json({
+      status: "error",
+      msg: "用户不存在.",
+    });
+  }
+  user.name = req.body.name;
+  user.gender = req.body.gender;
+  user.birth = req.body.birth;
+  user.phone = req.body.phone;
+  await user.save()
+    .then(() => {
+      res.status(201).json({
+        status: "success",
+        msg: "资料设置成功",
+      });
+    })
+    .catch(err => console.log(err));
+
+})
+
 module.exports = router;
