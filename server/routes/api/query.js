@@ -39,6 +39,13 @@ router.get("/", [
     });
   }
 
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
   const keyword = req.query.queryData.keyword.toUpperCase();
 
   const forbiddenKeyword = ["1.2", "2.1", "1.1", "0.0"];
@@ -114,11 +121,11 @@ router.get("/", [
         res.status(201).send(results);
       })
       .catch((err) => console.log(err));
-  } else if (keyword === "null") {
+  } else if (keyword === "NULL" || keyword === "空的") {
     await DB.find({
       $and: [
         { Place: place },
-        { [field]: "" },
+        { [field]: null },
       ],
     })
       .sort({ updatedAt: "descending" })
@@ -302,11 +309,16 @@ router.post("/addip", async (req, res) => {
     });
   }
 
-  const MAC = req.body.data.MAC.toUpperCase();
   const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
+  const MAC = req.body.data.MAC.toUpperCase();
   const ip = req.body.data.IP;
-
-
   let existsIP = await IP.exists({
     $and: [{ Place: place }, { IP: ip }],
   });
@@ -373,6 +385,13 @@ router.post("/adddatacenter", async (req, res) => {
   }
 
   let place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+  
   let ip = req.body.data.IP;
   let existsIP = await DataCenter.exists({
     $and: [{ Place: place }, { IP: ip }],
@@ -432,6 +451,13 @@ router.post("/addsurveillance", async (req, res) => {
   }
 
   let place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
   let ip = req.body.data.IP;
   let existsIP = await Surveillance.exists({
     $and: [{ Place: place }, { IP: ip }],
@@ -490,6 +516,13 @@ router.post("/addphone", async (req, res) => {
   }
 
   const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
   const cable = req.body.data.楼层线路.toUpperCase();
   const number = req.body.data.号码;
   const panel = req.body.data.面板号;
@@ -594,8 +627,15 @@ router.post("/addprinter", async (req, res) => {
     });
   }
 
-  const brand = req.body.data.品牌;
   const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
+  const brand = req.body.data.品牌;
   const printer = req.body.data.打印机;
   const cartridge = req.body.data.硒鼓.toUpperCase();
   const color = req.body.data.颜色;
@@ -736,7 +776,7 @@ router.delete("/deletelogger", async (req, res) => {
       .catch((err) => console.log(err));
   } catch (err) {
     console.log(err.message);
-    res.status(500).json({
+    res.status(401).json({
       status: "error",
       msg: err.message,
     });
@@ -759,10 +799,16 @@ router.put("/editip", async (req, res) => {
     });
   };
 
+  const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
 
   const ip = req.body.data.IP;
   const mac = req.body.data.MAC.toUpperCase();
-  const place = req.body.data.Place;
   const id = req.body.data._id;
 
   let existsIP = await IP.exists({
@@ -834,6 +880,13 @@ router.put("/editphone", async (req, res) => {
   }
 
   const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
   const cable = req.body.data.楼层线路.toUpperCase();
   const number = req.body.data.号码;
   const color = req.body.data.颜色对;
@@ -949,8 +1002,15 @@ router.put("/editprinter", async (req, res) => {
     });
   }
   
-  const id = req.body.data._id;
   const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
+
+  const id = req.body.data._id;
   const brand = req.body.data.品牌;
   const printer = req.body.data.打印机;
   const cartridge = req.body.data.硒鼓.toUpperCase();
@@ -1035,11 +1095,19 @@ router.put("/editdatacenter", async (req, res) => {
       msg: "您没有该权限.",
     });
   }
+
+  const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  }
   
   let ip = req.body.data.IP;
   let existsIP = await DataCenter.exists({
     $and: [
-      { Place: req.body.data.Place },
+      { Place: place },
       { IP: ip },
       { _id: { $ne: req.body.data._id } },
     ],
@@ -1099,7 +1167,15 @@ router.put("/editsurveillance", async (req, res) => {
       msg: "您没有该权限.",
     });
   }
-  
+
+  const place = req.body.data.Place;
+  if (!await validate.placeControl(user, place)) {
+    return res.status(401).json({
+      status: "placeError",
+      msg: "您没有权限访问该单位",
+    });
+  };
+
   let ip = req.body.data.IP;
   let existsIP = await Surveillance.exists({
     $and: [

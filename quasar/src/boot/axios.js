@@ -9,7 +9,7 @@ axios.defaults.timeout = 10000;
 // good idea to move this instance creation inside of the
 // "export default () => {}" function below (which runs individually
 // for each client)
-const api = axios.create({ baseURL: 'https://60890559e8ec.sn.mynetname.net:8080' })
+const api = axios.create({ baseURL: 'http://60890559e8ec.sn.mynetname.net:3000' })
 
 export default boot(({ app }) => {
   // for use inside Vue files (Options API) through this.$axios and this.$api

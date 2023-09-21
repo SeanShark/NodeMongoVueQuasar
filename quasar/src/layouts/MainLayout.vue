@@ -116,7 +116,7 @@
       </q-list>
     </q-drawer>
 
-    <q-dialog v-model="changePwd" persistent>
+    <q-dialog v-model="changePwd" persistent >
       <q-card style="min-width: 300px">
         <q-card-section>
           <div class="text-h6 text-center">密码更改</div>
@@ -193,7 +193,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="settings" persistent>
+    <q-dialog v-model="settings" persistent :class="store.isMobile? 'width: 100%': 'width: 320px'">
       <q-card style="min-width: 260px">
         <q-card-section>
           <div class="text-h6 text-center">个人资料更改</div>

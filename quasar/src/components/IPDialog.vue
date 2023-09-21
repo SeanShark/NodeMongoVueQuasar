@@ -127,7 +127,7 @@
           <div class="row q-gutter-sm justify-end q-mt-lg">
             <q-btn
               color="primary"
-              icon="add"
+              :icon="store.isAdd ? 'add' : 'edit'"
               :class="store.isMobile ? 'col-12' : 'col-3'"
               :label="store.isAdd ? '增 加' : '编 辑'"
               :loading="store.addBtnLoading"

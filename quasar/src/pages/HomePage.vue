@@ -1,7 +1,7 @@
 <template>
   <q-page class="bg-grey-3">
     <p class="text-h6 text-center q-pa-md">任务To-Do</p>
-    <div class="column q-pa-sm q-ma-none">
+    <div class="column q-pa-xs q-ma-none">
       <q-input
         ref="inputRef"
         v-model="todoData.todo"
@@ -28,7 +28,7 @@
           </q-btn>
         </template>
       </q-input>
-      <div class="col q-pa-sm">
+      <div class="col q-pa-xs">
         <div class="q-gutter-sm row justify-center">
           <q-radio
             v-for="(color, index) in colorPanel"
@@ -47,13 +47,13 @@
         </div>
       </div>
     </div>
-    <div class="q-gutter-y-md q-pa-sm">
+    <div class="q-gutter-y-md q-pa-none">
       
       <q-card>
         <q-tabs
           v-model="tab"
           dense
-          class="text-grey"
+          class="text-grey q-pa-none"
           active-color="primary"
           indicator-color="primary"
           align="justify"
@@ -66,7 +66,7 @@
         <q-separator />
 
         <q-tab-panels v-model="tab" animated>
-          <q-tab-panel name="todo" style="min-height: 150px">
+          <q-tab-panel  class="q-pa-none" name="todo" style="min-height: 150px">
             <q-list separator bordered>
               <q-item
                 v-for="(list, index) in store.doingLists"
@@ -98,8 +98,10 @@
 
                 <q-btn-dropdown
                   color="primary"
-                  padding="xs xs"
-                  class="glossy"
+                  padding="none"
+                  flat
+                  size="sm"
+                  dropdown-icon="change_history"
                   @click.stop
                 >
                   <q-list>
@@ -150,7 +152,7 @@
             </div>
           </q-tab-panel>
 
-          <q-tab-panel name="done" style="min-height: 150px">
+          <q-tab-panel class="q-pa-none" name="done" style="min-height: 150px">
             <q-list separator bordered>
               <q-item
                 v-for="(list, index) in store.doneLists"
@@ -179,12 +181,14 @@
 
                 <q-btn-dropdown
                   color="primary"
-                  padding="xs xs"
-                  class="glossy"
+                  padding="none"
+                  flat
+                  size="sm"
+                  dropdown-icon="change_history"
                   @click.stop
                 >
                   <q-list>
-                    <q-item v-close-popup lickable @click="editTask(list)">
+                    <q-item v-close-popup clickable @click="editTask(list)">
                       <q-item-section avatar>
                         <q-icon name="edit_note" color="primary" size="sm" />
                       </q-item-section>

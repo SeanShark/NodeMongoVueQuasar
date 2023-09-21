@@ -14,6 +14,22 @@ const validateUser = async (user) => {
   return true;
 };
 
+const placeControl = async (user, place) => {
+  const allowPlace = 'placeAccess.' + place
+  const legalUser = await DataBase.User.findOne({ 
+    $and: [
+      { email: user},
+      { [allowPlace] : true },
+    ] 
+  });
+  if(!legalUser) {
+    return false;
+  }
+  return true;
+}
+
+
+
 const addPrivilege = async (user) => {
   const legalUser = await DataBase.User.findOne({ email: user })
     .where("userPrivilege.add")
@@ -98,6 +114,7 @@ const allowDatacenter = async (user) => {
 
 module.exports = {
   validateUser,
+  placeControl,
   addPrivilege,
   editPrivilege,
   deletePrivilege,

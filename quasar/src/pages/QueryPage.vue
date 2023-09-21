@@ -19,9 +19,8 @@
               bottom-slots
               hide-bottom-space
               lazy-rules="ondemand"
-              :error="typeError"
+              :error="searchItems.typeError"
               :options="typeOptions"
-              :rules="[(val) => val != '-请选择-' || '请选择类型']"
             >
               <template #prepend>
                 <q-icon
@@ -29,6 +28,9 @@
                   color="primary"
                   @click.stop.prevent
                 />
+              </template>
+              <template #error>
+                {{ searchItems.errorMsg }}
               </template>
             </q-select>
           </div>
@@ -44,11 +46,14 @@
               bottom-slots
               hide-bottom-space
               lazy-rules="ondemand"
+              :error="searchItems.placeError"
               :options="places"
-              :rules="[(val) => val != '-请选择-' || '请选择地点']"
             >
               <template #prepend>
                 <q-icon name="place" color="accent" @click.stop.prevent />
+              </template>
+              <template #error>
+                {{ searchItems.errorMsg }}
               </template>
             </q-select>
            
@@ -384,6 +389,11 @@ const keywordState = reactive({
   isEmpty: false,
   errorMsg: ""
 });
+const searchItems = reactive({
+  typeError: false,
+  placeError: false,
+  errorMsg: ""
+})
 
 const columns = ref([]);
 
@@ -507,78 +517,97 @@ const onCancelAdd = () => {
 
 const handleSearch = async () => {
   keywordState.isEmpty = false;
+  searchItems.typeError = false;
+  searchItems.placeError = false;
   store.selected = [];
-  typeError.value = false;
   const keyword = store.searchData.keyword.trim();
 
-  if ((await typeRef.value?.validate()) && (await placeRef.value?.validate())) {
-    if (!keyword) {
-      keywordState.isEmpty = true;
-      keywordState.errorMsg = "搜索关键字不能为空";
-      return;
-    }
-    if (keyword.length === 1) {
-      keywordState.isEmpty = true;
-      keywordState.errorMsg = "关键字太少";
-      return;
-    }
-    searchLoading.value = true;
-
-    if (store.searchData.type === "终端") {
-      columns.value = ipColumns;
-    } else if (store.searchData.type === "耗材") {
-      columns.value = printerColumns;
-    } else if (store.searchData.type === "电话") {
-      columns.value = phoneColumns;
-    } 
-    else if (store.searchData.type === "机房") {
-      columns.value = datacenterColumns;
-    } 
-    else if (store.searchData.type === "监控") {
-      columns.value = surveillanceColumns;
-    } 
-    else {
-      searchLoading.value = false;
-      store.failureTip('错误搜索类型');
-      return;
-    }
-
-    const queryData = {
-      type: store.searchData.type,
-      place: store.searchData.place,
-      field: store.searchData.field,
-      keyword: keyword,
-      user: store.user.email,
-    };
-
-    
-    await store.axios.get("/query", {params: { queryData }})
-      .then((res) => {
-        if (res.status === 201) {
-          showTable.value = true;
-          tableRows.value = res.data;
-        }
-      })
-      .catch((err) => {
-        if (err.response.data.status === "keywordError") {
-          keywordState.isEmpty = true;
-          keywordState.errorMsg = err.response.data.msg;
-        }
-        else if (err.response.data.status === "typeError") {
-          tableRows.value = [];
-          typeError.value = true;
-          store.failureTip(err.response.data.msg);
-        }
-        else {
-          tableRows.value = [];
-          store.failureTip(err.response.data.msg);
-        }
-      })
-      .finally(async () => {
-        scrollAreaHeight.value = await tableRef.value?.$el.clientHeight + 10;
-        searchLoading.value = false;
-      })
+  // if ((await typeRef.value?.validate()) && (await placeRef.value?.validate())) 
+  if(store.searchData.type === '-请选择-') {
+    searchItems.typeError = true;
+    searchItems.errorMsg = '请选择类型';
+    return;
   }
+
+  if(store.searchData.place === '-请选择-') {
+    searchItems.placeError = true;
+    searchItems.errorMsg = '请选择地点';
+    return;
+  }
+
+  if (!keyword) {
+    keywordState.isEmpty = true;
+    keywordState.errorMsg = "搜索关键字不能为空";
+    return;
+  }
+  if (keyword.length === 1) {
+    keywordState.isEmpty = true;
+    keywordState.errorMsg = "关键字太少";
+    return;
+  }
+  searchLoading.value = true;
+
+  if (store.searchData.type === "终端") {
+    columns.value = ipColumns;
+  } else if (store.searchData.type === "耗材") {
+    columns.value = printerColumns;
+  } else if (store.searchData.type === "电话") {
+    columns.value = phoneColumns;
+  } 
+  else if (store.searchData.type === "机房") {
+    columns.value = datacenterColumns;
+  } 
+  else if (store.searchData.type === "监控") {
+    columns.value = surveillanceColumns;
+  } 
+  else {
+    searchLoading.value = false;
+    store.failureTip('错误搜索类型');
+    return;
+  }
+
+  const queryData = {
+    type: store.searchData.type,
+    place: store.searchData.place,
+    field: store.searchData.field,
+    keyword: keyword,
+    user: store.user.email,
+  };
+  
+  await store.axios.get("/query", {params: { queryData }})
+    .then((res) => {
+      if (res.status === 201) {
+        showTable.value = true;
+        tableRows.value = res.data;
+      }
+    })
+    .catch((err) => {
+      if (err.response.data.status === "keywordError") {
+        keywordState.isEmpty = true;
+        keywordState.errorMsg = err.response.data.msg;
+      }
+      else if (err.response.data.status === "typeError") {
+        tableRows.value = [];
+        searchItems.typeError = true;
+        searchItems.errorMsg = err.response.data.msg
+        // store.failureTip(err.response.data.msg);
+      }
+      else if (err.response.data.status === "placeError") {
+        tableRows.value = [];
+        searchItems.placeError = true;
+        searchItems.errorMsg = err.response.data.msg
+        // store.failureTip(err.response.data.msg);
+      }
+      else {
+        tableRows.value = [];
+        store.failureTip(err.response.data.msg);
+      }
+    })
+    .finally(async () => {
+      scrollAreaHeight.value = await tableRef.value?.$el.clientHeight + 10;
+      searchLoading.value = false;
+    })
+  
 };
 
 const isValidIPv4 = (ip) => {

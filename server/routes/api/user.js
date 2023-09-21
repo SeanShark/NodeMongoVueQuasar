@@ -588,8 +588,8 @@ router.post("/setuser",async (req, res) => {
   }
 
   try {
-    const user = await User.findOneAndUpdate({ _id: id }, { [field]: value });
-    if (user) {
+    const updateUser = await User.findOneAndUpdate({ _id: id }, { [field]: value });
+    if (updateUser) {
       res.status(201).json({
         status: "success",
         msg: "权限成功修改.",
@@ -631,5 +631,36 @@ router.post("/personal", async (req, res) => {
     .catch(err => console.log(err));
 
 })
+
+router.delete("/deleteuser", async (req, res) => {
+  const user = req.query.user;
+  if (!await validate.validateUser(user)) {
+    return res.status(401).json({
+      status: "error",
+      msg: "未授权用户",
+    });
+  }
+
+  const id = req.query.id;
+  try {
+    const targetId = await User.deleteOne({ _id: id })
+    if (targetId) {
+      res.status(201).json({
+        status: "success",
+        msg: "账户已成功删除.",
+      });
+    } else {
+      res.status(401).json({
+        status: "error",
+        msg: "错误，请重试.",
+      });
+    }
+  } catch (err) {
+    res.status(401).json({
+      status: "error",
+      msg: err.message,
+    });
+  }
+});
 
 module.exports = router;

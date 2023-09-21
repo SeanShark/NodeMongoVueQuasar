@@ -116,6 +116,28 @@ const UserSchema = new mongoose.Schema({
       default: false
     },
   },
+  placeAccess: {
+    '禾花': {
+      type: Boolean,
+      default: false
+    },
+    '新南': {
+      type: Boolean,
+      default: false
+    },
+    '鹅公岭': {
+      type: Boolean,
+      default: false
+    },
+    '白坭坑': {
+      type: Boolean,
+      default: false
+    },
+    '慧明': {
+      type: Boolean,
+      default: false
+    },
+  },
   loggerSetting: {
     monthRange: {
       type: Number,

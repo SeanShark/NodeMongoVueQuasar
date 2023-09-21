@@ -31,8 +31,8 @@
           {{ user.email }}
           <q-avatar
             v-if="user.userPrivilege.superUser"
-            text-color="green"
-            icon="star"
+            text-color="red"
+            icon="supervisor_account"
             size="lg"
           >
             <q-tooltip>
@@ -41,7 +41,7 @@
           </q-avatar>
           <q-avatar
             v-if="user.activationCode != null"
-            text-color="grey"
+            text-color="warning"
             icon="question_mark"
             size="lg"
           >
@@ -52,8 +52,8 @@
 
           <q-avatar
             v-if="user.banned"
-            text-color="red"
-            icon="remove_circle_outline"
+            text-color="grey"
+            icon="person_off"
             size="lg"
           >
             <q-tooltip>
@@ -67,6 +67,7 @@
           expand-separator
           icon="perm_identity"
           label="用户信息"
+          
         >
           <q-card class="shadow-3">
             <q-card-section>
@@ -124,6 +125,7 @@
           icon="task_alt"
           label="操作权限"
           header-class="text-primary"
+          :disable="user.banned"
         >
           <q-card>
             <q-card-section>
@@ -182,6 +184,7 @@
           icon="drafts"
           label="访问类型"
           header-class="text-teal"
+          :disable="user.banned"
         >
           <q-card>
             <q-card-section>
@@ -191,7 +194,7 @@
                 label="终端"
                 left-label
                 :disable="clickable"
-                @click="updateUser(user._id, 'databasePermissions.ip', user.userPrivilege.delete)"
+                @click="updateUser(user._id, 'databasePermissions.ip', user.databasePermissions.ip)"
               />
               <q-toggle
                 v-model="user.databasePermissions.phone"
@@ -228,19 +231,91 @@
             </q-card-section>
           </q-card>
         </q-expansion-item>
-        <div
-          v-if="user.email !== '47262243@qq.com'"
-          class="q-pa-md row justify-center"
+        <q-expansion-item
+          expand-separator
+          icon="place"
+          label="地点控制"
+          header-class="text-info"
+          :disable="user.banned"
         >
-          <q-toggle
-            v-model="user.banned"
-            color="green"
-            label="禁用该账户"
-            left-label
-            :disable="clickable"
-            @click="updateUser(user._id, 'banned', user.banned)"
-          />
-        </div>
+          <q-card>
+            <q-card-section>
+              <q-toggle
+                v-model="user.placeAccess.禾花"
+                color="green"
+                label="禾花"
+                left-label
+                :disable="clickable"
+                @click="updateUser(user._id, 'placeAccess.禾花', user.placeAccess.禾花)"
+              />
+              <q-toggle
+                v-model="user.placeAccess.新南"
+                color="green"
+                label="新南"
+                left-label
+                :disable="clickable"
+                @click="updateUser(user._id, 'placeAccess.新南', user.placeAccess.新南)"
+              />
+              <q-toggle
+                v-model="user.placeAccess.鹅公岭"
+                color="green"
+                label="鹅公岭"
+                left-label
+                :disable="clickable"
+                @click="updateUser(user._id, 'placeAccess.鹅公岭', user.placeAccess.鹅公岭)"
+              />
+              <q-toggle
+                v-model="user.placeAccess.白坭坑"
+                color="green"
+                label="白坭坑"
+                left-label
+                :disable="clickable"
+                @click="updateUser(user._id, 'placeAccess.白坭坑', user.placeAccess.白坭坑)"
+              />
+              <q-toggle
+                v-model="user.placeAccess.慧明"
+                color="green"
+                label="慧明"
+                left-label
+                :disable="clickable"
+                @click="updateUser(user._id, 'placeAccess.慧明', user.placeAccess.慧明)"
+              />
+            </q-card-section>
+          </q-card>
+        </q-expansion-item>
+        <q-expansion-item
+          v-if="user.email !== store.user.email"
+          expand-separator
+          icon="manage_accounts"
+          label="账户管理"
+          header-class="text-indigo"
+          :disable="user.banned"
+        >
+          <q-card>
+            <q-card-section>
+              <div
+                class="row justify-around"
+              >
+                <q-toggle
+                  v-model="user.banned"
+                  color="green"
+                  label="禁用该账户"
+                  left-label
+                  :disable="clickable"
+                  @click="updateUser(user._id, 'banned', user.banned)"
+                />
+                <q-btn 
+                  label="删除该用户"
+                  color="grey-4" 
+                  text-color="red"
+                  @click="confirmDeleteUser(user._id)"
+                >
+                </q-btn>
+              </div>
+            </q-card-section>
+          </q-card>
+        </q-expansion-item>
+
       </q-list>
     </div>
   </q-page>
@@ -296,6 +371,44 @@ const filteredUser = computed(() => {
 });
 
 
+const confirmDeleteUser = async (id) => {
+      store.$q.dialog({
+        title: '确认删除',
+        message: '确认要删除该用户吗？',
+        cancel: true,
+        persistent: true,
+        ok: {
+          push: true,
+          label: "确定",
+          color: "green",
+        },
+        cancel: {
+          push: true,
+          color: "grey",
+          label: "取消",
+        },
+      }).onOk(async () => {
+        await store.axios.delete("/user/deleteuser", {
+          params: {
+            id: id,
+            user: store.user.email,
+          },
+        })
+        .then((res) => {
+          if(res.status === 201) {
+            originalUsers.value = originalUsers.value.filter((lists) => lists._id !== id);
+            store.successTip(res.data.msg);
+          }
+        })
+        .catch((err) => {
+          store.failureTip(err.response.data.msg)
+        })
+      }).onCancel(() => {
+        // console.log('>>>> Cancel')
+      }).onDismiss(() => {
+        // console.log('I am triggered on both OK and Cancel')
+      })
+    }
 
 onMounted(async () => {
   try {
