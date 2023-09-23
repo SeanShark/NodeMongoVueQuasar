@@ -1,6 +1,13 @@
 <template>
   <q-page class="column q-pa-sm bg-grey-3">
-    <div class="text-center text-h5 q-pa-md">信息查询</div>
+    <div class="text-center row justify-center" >
+      <div class="text-center text-h5 q-pa-md">信息查询</div>
+      <q-icon name="info" size="md" color="orange-4"> 
+        <q-tooltip>
+          点击获得帮助
+        </q-tooltip>
+      </q-icon>
+    </div>
     <div class="row justify-end">
       <q-toggle v-model="visible" label="显示搜索框" class="q-mb-md" />
     </div>
@@ -120,6 +127,9 @@
         :offset="fabPosition"
         class="z-top"
       >
+        <q-tooltip anchor="center left" self="center right">
+          按住可拖拽
+        </q-tooltip>
         <q-fab 
           v-touch-pan.prevent.mouse="moveFab"
           icon="keyboard_arrow_up"
@@ -155,11 +165,12 @@
             @click="openDeleteDialog = true"
           />
           <q-fab-action 
-            label="下载"
-            color="grey-7" 
+            label="导出"
+            :color="downloadable? 'secondary' : 'grey'" 
             icon="download" 
             :disable="!downloadable"
             :hide-label="store.isMobile"
+            @click="exportTable"
           />
         </q-fab>
       </q-page-sticky>
@@ -179,7 +190,6 @@
           row-key="_id"
           selection="single"
         >
-
           <template #top-left>
             搜索结果：共 {{ tableRows.length }} 条
           </template>
@@ -314,14 +324,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, computed, onMounted } from "vue";
+import { ref, reactive, watch, computed, onMounted} from "vue";
 import { useRouter } from "vue-router";
-import DeleteDialog from 'src/components/DeleteDialog.vue'
-import IPDialog from 'src/components/IPDialog.vue'
-import PhoneDialog from 'src/components/PhoneDialog.vue'
-import PrinterDialog from 'src/components/PrinterDialog.vue'
-import DataCenterDialog from 'src/components/DataCenterDialog.vue'
-import SurveillanceDialog from 'src/components/SurveillanceDialog.vue'
+import DeleteDialog from 'src/components/DeleteDialog.vue';
+import IPDialog from 'src/components/IPDialog.vue';
+import PhoneDialog from 'src/components/PhoneDialog.vue';
+import PrinterDialog from 'src/components/PrinterDialog.vue';
+import DataCenterDialog from 'src/components/DataCenterDialog.vue';
+import SurveillanceDialog from 'src/components/SurveillanceDialog.vue';
+import { exportFile } from 'quasar';
 
 import { useUserStore } from "../stores/store";
 
@@ -519,6 +530,7 @@ const handleSearch = async () => {
   keywordState.isEmpty = false;
   searchItems.typeError = false;
   searchItems.placeError = false;
+  downloadable.value = false;
   store.selected = [];
   const keyword = store.searchData.keyword.trim();
 
@@ -540,7 +552,7 @@ const handleSearch = async () => {
     keywordState.errorMsg = "搜索关键字不能为空";
     return;
   }
-  if (keyword.length === 1) {
+  if (keyword.length === 1 && store.searchData.field !== '姓名') {
     keywordState.isEmpty = true;
     keywordState.errorMsg = "关键字太少";
     return;
@@ -579,6 +591,9 @@ const handleSearch = async () => {
       if (res.status === 201) {
         showTable.value = true;
         tableRows.value = res.data;
+        if (tableRows.value.length !== 0) {
+          downloadable.value = true;
+        }
       }
     })
     .catch((err) => {
@@ -629,26 +644,6 @@ const sortIPv4 = (a, b) => {
   const numericB = ipToNumber(b);
 
   return numericA - numericB;
-};
-
-const fetchLists = async () => {
-  const queryData = {
-    type: store.searchData.type,
-    place: store.searchData.place,
-    field: store.searchData.field,
-    keyword: "所有",
-    user: store.user.email,
-  };
-
-  await store.axios
-    .get("/query", { params: { queryData } })
-    .then((res) => {
-      store.checkLists = res.data;
-      console.log();
-    })
-    .catch((err) => {
-      store.failureTip(err.response.data.msg);
-    });
 };
 
 const openAddDialog = () => {
@@ -1689,6 +1684,53 @@ const surveillanceColumns = [
     sortable: false,
   },
 ];
+
+const wrapCsvValue  = (val, formatFn, row) => {
+  let formatted = formatFn !== void 0
+    ? formatFn(val, row)
+    : val
+
+  formatted = formatted === void 0 || formatted === null
+    ? ''
+    : String(formatted)
+
+  formatted = formatted.split('"').join('""')
+  /**
+   * Excel accepts \n and \r in strings, but some other CSV parsers do not
+   * Uncomment the next two lines to escape new lines
+   */
+  // .split('\n').join('\\n')
+  // .split('\r').join('\\r')
+  return `"${formatted}"`
+}
+
+const exportTable = () => {
+  // naive encoding to csv format
+  const content = [columns.value.map(col => wrapCsvValue(col.label))].concat(
+    tableRows.value.map(row => columns.value.map(col => wrapCsvValue(
+      typeof col.field === 'function'
+        ? col.field(row)
+        : row[ col.field === void 0 ? col.name : col.field ],
+      col.format,
+      row
+    )).join(','))
+  ).join('\r\n')
+
+  const status = exportFile(
+    store.searchData.place + '-' + store.searchData.type + '-' + store.searchData.keyword + '.csv',
+    "\ufeff" + content,
+    'text/csv'
+  )
+
+  if (status !== true) {
+    store.$q.notify({
+      message: '浏览器拒绝下载',
+      color: 'negative',
+      icon: 'warning'
+    })
+  }
+}
+     
 
 </script>
 

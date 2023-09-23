@@ -291,7 +291,9 @@
     </q-dialog>
 
     <q-page-container style="overflow-y: auto">
-      <router-view />
+      <KeepAlive>
+        <router-view />
+      </KeepAlive>
     </q-page-container>
   </q-layout>
 </template>

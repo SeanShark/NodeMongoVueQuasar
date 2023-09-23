@@ -2,7 +2,7 @@ import { defineStore } from "pinia";
 import axios from "axios";
 import { store } from "quasar/wrappers";
 import { reactive } from "vue";
-import { useQuasar, date } from "quasar";
+import { useQuasar, date, exportFile } from "quasar";
 
 export const useUserStore = defineStore("datastore", {
   state: () => ({
